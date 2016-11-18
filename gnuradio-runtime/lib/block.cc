@@ -708,7 +708,7 @@ namespace gr {
     pmt::pmt_t op = pmt::car(msg);
     if(pmt::eqv(op, pmt::mp("done"))){
         d_finished = pmt::to_long(pmt::cdr(msg));
-        global_block_registry.notify_blk(alias());
+        //global_block_registry.notify_blk(alias());
     } else {
         std::cout << "WARNING: bad message op on system port!\n";
         pmt::print(msg);
@@ -750,7 +750,8 @@ namespace gr {
   bool
   block::finished()
   {
-    if((detail()->ninputs() != 0) || (detail()->noutputs() != 0))
+    //if((detail()->ninputs() != 0) || (detail()->noutputs() != 0))
+    if(detail()->ninputs() != 0)
       return false;
     else
       return d_finished;

@@ -26,18 +26,6 @@
 #include <volk/volk.h>
 #include <fftw3.h>
 
-#ifdef _MSC_VER //http://www.fftw.org/install/windows.html#DLLwisdom
-static void my_fftw_write_char(char c, void *f) { fputc(c, (FILE *) f); }
-#define fftw_export_wisdom_to_file(f) fftw_export_wisdom(my_fftw_write_char, (void*) (f))
-#define fftwf_export_wisdom_to_file(f) fftwf_export_wisdom(my_fftw_write_char, (void*) (f))
-#define fftwl_export_wisdom_to_file(f) fftwl_export_wisdom(my_fftw_write_char, (void*) (f))
-
-static int my_fftw_read_char(void *f) { return fgetc((FILE *) f); }
-#define fftw_import_wisdom_from_file(f) fftw_import_wisdom(my_fftw_read_char, (void*) (f))
-#define fftwf_import_wisdom_from_file(f) fftwf_import_wisdom(my_fftw_read_char, (void*) (f))
-#define fftwl_import_wisdom_from_file(f) fftwl_import_wisdom(my_fftw_read_char, (void*) (f))
-#endif //_MSC_VER
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -75,65 +63,8 @@ namespace gr {
       volk_free(b);
     }
 
-    boost::mutex &
-    planner::mutex()
-    {
-      static boost::mutex  s_planning_mutex;
-
-      return s_planning_mutex;
-    }
-
-    static std::string
-    wisdom_filename()
-    {
-      static fs::path path;
-      path = fs::path(gr::appdata_path()) / ".gr_fftw_wisdom";
-      return path.string();
-    }
-
-    static void
-    import_wisdom()
-    {
-      const std::string filename = wisdom_filename ();
-      FILE *fp = fopen (filename.c_str(), "r");
-      if (fp != 0){
-        int r = fftwf_import_wisdom_from_file (fp);
-        fclose (fp);
-        if (!r){
-          fprintf (stderr, "gr::fft: can't import wisdom from %s\n", filename.c_str());
-        }
-      }
-    }
-
-    static void
-    config_threading(int nthreads)
-    {
-      static int fftw_threads_inited = 0;
-
-#ifdef FFTW3F_THREADS
-      if (fftw_threads_inited == 0)
-    {
-      fftw_threads_inited = 1;
-      fftwf_init_threads();
-    }
-
-      fftwf_plan_with_nthreads(nthreads);
-#endif
-    }
-
-    static void
-    export_wisdom()
-    {
-      const std::string filename = wisdom_filename ();
-      FILE *fp = fopen (filename.c_str(), "w");
-      if (fp != 0){
-        fftwf_export_wisdom_to_file (fp);
-        fclose (fp);
-      }
-      else {
-        fprintf (stderr, "fft_impl_fftw: ");
-        perror (filename.c_str());
-      }
+    boost::mutex & planner::mutex() {
+      return fftwf_manager::planner::mutex();
     }
 
 // ----------------------------------------------------------------
@@ -161,8 +92,8 @@ namespace gr {
       }
 
       d_nthreads = nthreads;
-      config_threading(nthreads);
-      import_wisdom();	// load prior wisdom from disk
+      fftwf_manager::config_threading(nthreads);
+      fftwf_manager::import_wisdom();	// load prior wisdom from disk
 
       d_plan = fftwf_plan_dft_1d (fft_size,
                   reinterpret_cast<fftwf_complex *>(d_inbuf),
@@ -174,7 +105,7 @@ namespace gr {
         fprintf(stderr, "gr::fft: error creating plan\n");
         throw std::runtime_error ("fftwf_plan_dft_1d failed");
       }
-      export_wisdom();	// store new wisdom to disk
+      fftwf_manager::export_wisdom();	// store new wisdom to disk
     }
 
     fft_complex::~fft_complex()
@@ -232,8 +163,8 @@ namespace gr {
       }
 
       d_nthreads = nthreads;
-      config_threading(nthreads);
-      import_wisdom();	// load prior wisdom from disk
+      fftwf_manager::config_threading(nthreads);
+      fftwf_manager::import_wisdom();	// load prior wisdom from disk
 
       d_plan = fftwf_plan_dft_r2c_1d (fft_size,
                       d_inbuf,
@@ -244,7 +175,7 @@ namespace gr {
         fprintf(stderr, "gr::fft::fft_real_fwd: error creating plan\n");
         throw std::runtime_error ("fftwf_plan_dft_r2c_1d failed");
       }
-      export_wisdom();	// store new wisdom to disk
+      fftwf_manager::export_wisdom();	// store new wisdom to disk
     }
 
     fft_real_fwd::~fft_real_fwd()
@@ -302,8 +233,8 @@ namespace gr {
       }
 
       d_nthreads = nthreads;
-      config_threading(nthreads);
-      import_wisdom();	// load prior wisdom from disk
+      fftwf_manager::config_threading(nthreads);
+      fftwf_manager::import_wisdom();	// load prior wisdom from disk
 
       // FIXME If there's ever a chance that the planning functions
       // will be called in multiple threads, we've got to ensure single
@@ -317,7 +248,7 @@ namespace gr {
         fprintf(stderr, "gr::fft::fft_real_rev: error creating plan\n");
         throw std::runtime_error ("fftwf_plan_dft_c2r_1d failed");
       }
-      export_wisdom ();	// store new wisdom to disk
+      fftwf_manager::export_wisdom ();	// store new wisdom to disk
     }
 
     fft_real_rev::~fft_real_rev ()

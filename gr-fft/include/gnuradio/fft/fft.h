@@ -30,6 +30,7 @@
 #include <gnuradio/fft/api.h>
 #include <gnuradio/gr_complex.h>
 #include <boost/thread.hpp>
+#include <gnuradio/fft/fftwf_manager.h>
 
 namespace gr {
   namespace fft {

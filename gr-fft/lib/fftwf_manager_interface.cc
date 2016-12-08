@@ -93,7 +93,7 @@ namespace gr {
         }
         success_flag = (r != 0);
       }
-      std::cerr << "Import wisdom " << success_flag << std::endl;
+      //std::cerr << "Import wisdom " << success_flag << std::endl;
       return success_flag;
     }
     bool fftwf_manager_basic::export_wisdom() {
@@ -109,7 +109,7 @@ namespace gr {
         fprintf (stderr, "fft_impl_fftw: ");
         perror (d_filename.c_str());
       }
-      std::cerr << "Export wisdom " << success_flag << std::endl;
+      //std::cerr << "Export wisdom " << success_flag << std::endl;
       return success_flag;
     }
     void fftwf_manager_basic::start() {

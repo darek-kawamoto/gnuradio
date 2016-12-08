@@ -45,6 +45,7 @@ list(APPEND fft_sources
   fft_vcc_fftw.cc
   fft_vfc_fftw.cc
   fftwf_manager.cc
+  fftwf_manager_interface.cc
   goertzel_fc_impl.cc
   goertzel.cc
   window.cc

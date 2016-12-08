@@ -64,7 +64,7 @@ namespace gr {
     }
 
     boost::mutex & planner::mutex() {
-      return fftwf_manager::planner::mutex();
+      return fftwf_manager::mutex();
     }
 
 // ----------------------------------------------------------------

@@ -26,6 +26,7 @@ install(FILES
     fft_vcc.h
     fft_vfc.h
     fftwf_manager.h
+    fftwf_manager_interface.h
     goertzel.h
     goertzel_fc.h
     window.h

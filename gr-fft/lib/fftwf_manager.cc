@@ -50,52 +50,76 @@ namespace fs = boost::filesystem;
 
 namespace gr {
   namespace fftwf_manager {
-    boost::mutex& planner::mutex() {
-      static boost::mutex  s_planning_mutex;
-      return s_planning_mutex;
+    // Static memory setup:
+    boost::mutex fftwf_manager_static_objects::s_fftwf_manager_lock;
+    boost::mutex fftwf_manager_static_objects::s_fftwf_planner_lock;
+    fftwf_manager_interface* fftwf_manager_static_objects::s_fftwf_manager = NULL;
+    namespace {
+      int x = fftwf_manager_static_objects::setup_static_memory();
+    }
+    int fftwf_manager_static_objects::setup_static_memory() {
+      s_fftwf_manager = new fftwf_manager_basic;
+      s_fftwf_manager->start();
+      std::atexit(fftwf_manager_static_objects::teardown_static_memory);
+      return 1;
+    }
+    void fftwf_manager_static_objects::teardown_static_memory() {
+      s_fftwf_manager->export_wisdom();
+      s_fftwf_manager->stop();
+      delete s_fftwf_manager;
+      s_fftwf_manager = NULL;
+    }
+    
+    boost::mutex& mutex() {
+      return fftwf_manager_static_objects::s_fftwf_planner_lock;
     }
 
     std::string wisdom_filename() {
-      static fs::path path;
-      path = fs::path(gr::appdata_path()) / ".gr_fftw_wisdom";
-      return path.string();
-    }
-
-    void import_wisdom() {
-      const std::string filename = wisdom_filename ();
-      FILE *fp = fopen(filename.c_str(), "r");
-      if (fp != 0) {
-        int r = fftwf_import_wisdom_from_file(fp);
-        fclose(fp);
-        if (!r) {
-          fprintf (stderr, "gr::fft: can't import wisdom from %s\n", filename.c_str());
-        }
-      }
-    }
-
-    void config_threading(int nthreads) {
-      static int fftw_threads_inited = 0;
-#ifdef FFTW3F_THREADS
-      if (fftw_threads_inited == 0) {
-        fftw_threads_inited = 1;
-        fftwf_init_threads();
-      }
-      fftwf_plan_with_nthreads(nthreads);
-#endif
-    }
-
-    void export_wisdom() {
-      const std::string filename = wisdom_filename ();
-      FILE *fp = fopen(filename.c_str(), "w");
-      if (fp != 0) {
-        fftwf_export_wisdom_to_file(fp);
-        fclose(fp);
-      }
-      else {
-        fprintf (stderr, "fft_impl_fftw: ");
-        perror (filename.c_str());
-      }
+      boost::mutex::scoped_lock lock(get_fftwf_manager_lock());
+      return get_fftwf_manager()->wisdom_filename();
     }
     
+    void config_threading(int nthreads) {
+      boost::mutex::scoped_lock lock(get_fftwf_manager_lock());
+      return get_fftwf_manager()->config_threading(nthreads);
+    }
+    
+    bool import_wisdom() {
+      boost::mutex::scoped_lock lock(get_fftwf_manager_lock());
+      return get_fftwf_manager()->import_wisdom();
+    }
+
+    bool export_wisdom() {
+      boost::mutex::scoped_lock lock(get_fftwf_manager_lock());
+      return get_fftwf_manager()->export_wisdom();
+    }
+    void start_manager() {
+      boost::mutex::scoped_lock planner_lock(get_fftwf_planner_lock());
+      boost::mutex::scoped_lock lock(get_fftwf_manager_lock());
+      return get_fftwf_manager()->start();
+    }
+    void stop_manager() {
+      boost::mutex::scoped_lock planner_lock(get_fftwf_planner_lock());
+      boost::mutex::scoped_lock lock(get_fftwf_manager_lock());
+      return get_fftwf_manager()->stop();
+    }
+    
+    // fftwf_manager 
+    boost::mutex& get_fftwf_manager_lock() {
+      return fftwf_manager_static_objects::s_fftwf_manager_lock;
+    }
+    boost::mutex& get_fftwf_planner_lock() {
+      return fftwf_manager_static_objects::s_fftwf_planner_lock;
+    }
+    fftwf_manager_interface* get_fftwf_manager() {
+      return fftwf_manager_static_objects::s_fftwf_manager;
+    }
+    void set_fftwf_manager(fftwf_manager_interface* manager) {
+      boost::mutex::scoped_lock lock(get_fftwf_manager_lock());
+      fftwf_manager_static_objects::s_fftwf_manager->stop();
+      delete fftwf_manager_static_objects::s_fftwf_manager;
+      fftwf_manager_static_objects::s_fftwf_manager = manager;
+      fftwf_manager_static_objects::s_fftwf_manager->start();
+    }
   } /* namespace fftw_manager */
 } /* namespace gr */
